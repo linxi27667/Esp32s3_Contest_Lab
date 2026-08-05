@@ -1,0 +1,17 @@
+# ESP-IDF build output and caches
+**/build/
+**/.cache/
+
+# Generated ESP-IDF configuration backups
+**/sdkconfig.old
+**/sdkconfig.*.old
+
+# Editor and OS metadata
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Python cache
+__pycache__/
+*.py[cod]

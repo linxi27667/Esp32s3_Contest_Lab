@@ -1,0 +1,21 @@
+idf_component_register(SRCS
+                           "main.c"
+                           "app/app_protocol.c"
+                           "app/debug_console.c"
+                           "hardware/hal_led.c"
+                           "hardware/hal_buzzer.c"
+                           "hardware/hal_key.c"
+                           "hardware/hal_timer.c"
+                           "hardware/hal_uart.c"
+                           "hardware/hal_adc.c"
+                       INCLUDE_DIRS
+                           "."
+                           "app"
+                           "hardware"
+                       REQUIRES
+                           esp_driver_gpio
+                           esp_driver_ledc
+                           esp_driver_gptimer
+                           esp_driver_uart
+                           esp_adc
+                           console)
