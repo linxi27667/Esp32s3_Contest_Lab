@@ -103,7 +103,7 @@ static void Uart_Deinit_All(void)
 }
 
 /* 初始化全部业务串口：装驱动、配参数、绑引脚。 */
-esp_err_t Uart_Init(void)
+esp_err_t Uart_Hal_Init(void)
 {
     if (g_driver_ready) {
         return ESP_ERR_INVALID_STATE;

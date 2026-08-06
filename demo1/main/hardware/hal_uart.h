@@ -23,7 +23,7 @@ typedef enum {
  * UART0 默认由 ESP-IDF console 使用，因此默认不由本 HAL 重复初始化。
  * 每一路是否启用、串口号、TX/RX 引脚和波特率在 config.h 中配置。
  */
-esp_err_t Uart_Init(void);
+esp_err_t Uart_Hal_Init(void);
 
 /**
  * @brief 发送指定长度的二进制数据。

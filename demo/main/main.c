@@ -14,7 +14,7 @@ void app_main(void)
     ESP_ERROR_CHECK(Key_Interrupt_Init());
     ESP_ERROR_CHECK(Touch_Init());
     ESP_ERROR_CHECK(Timer_Init());
-    ESP_ERROR_CHECK(Uart_Init());
+    ESP_ERROR_CHECK(Uart_Hal_Init());
     ESP_ERROR_CHECK(Adc_Init());
     ESP_ERROR_CHECK(Debug_Console_Init());
 
