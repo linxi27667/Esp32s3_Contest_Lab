@@ -92,7 +92,7 @@
 #define TIMER_DEFAULT_PERIOD_MS 1000
 
 /* 定时器任务配置。 */
-#define TIMER_TASK_STACK_SIZE 2048
+#define TIMER_TASK_STACK_SIZE 4096
 #define TIMER_TASK_PRIORITY 5
 
 /* UART：UART_NUM_0 由 ESP-IDF console 管理，下面只配置外部通信 UART。 */
