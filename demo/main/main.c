@@ -111,6 +111,68 @@ static void Touch_Task(void *argument)
 }
 
 /* 定时器应用任务：阻塞等待闹钟事件并处理业务。 */
+/* TIMER_ID_0 的业务事件处理。 */
+static void Timer0_HandleEvent(const timer_event_t *event)
+{
+    switch (event->type) {
+    case TIMER_EVENT_PERIODIC_TICK:
+        ESP_LOGI(
+            g_tag,
+            "Timer0 periodic: period=%lums count=%llu us",
+            (unsigned long)event->period_ms,
+            (unsigned long long)event->count_us);
+        break;
+
+    default:
+        ESP_LOGW(g_tag, "Unknown Timer0 event: %u", (unsigned)event->type);
+        break;
+    }
+}
+
+/* TIMER_ID_1 的业务事件处理。 */
+static void Timer1_HandleEvent(const timer_event_t *event)
+{
+    switch (event->type) {
+    case TIMER_EVENT_BUZZER_STOP:
+        if (Buzzer_Passive_Stop() != ESP_OK) {
+            ESP_LOGW(g_tag, "Failed to stop passive buzzer");
+        }
+        break;
+
+    case TIMER_EVENT_LED_BLINK:
+        ESP_LOGI(g_tag, "Timer1 LED blink event");
+        break;
+
+    case TIMER_EVENT_RGB_REFRESH:
+        ESP_LOGI(g_tag, "Timer1 RGB refresh event");
+        break;
+
+    default:
+        ESP_LOGW(g_tag, "Unknown Timer1 event: %u", (unsigned)event->type);
+        break;
+    }
+}
+
+/* TIMER_ID_2 的业务事件处理。 */
+static void Timer2_HandleEvent(const timer_event_t *event)
+{
+    ESP_LOGI(
+        g_tag,
+        "Timer2 event type=%u period=%lums",
+        (unsigned)event->type,
+        (unsigned long)event->period_ms);
+}
+
+/* TIMER_ID_3 的业务事件处理。 */
+static void Timer3_HandleEvent(const timer_event_t *event)
+{
+    ESP_LOGI(
+        g_tag,
+        "Timer3 event type=%u period=%lums",
+        (unsigned)event->type,
+        (unsigned long)event->period_ms);
+}
+
 static void Timer_Task(void *argument)
 {
     (void)argument;
@@ -124,31 +186,25 @@ static void Timer_Task(void *argument)
         }
 
         /* 每一路定时器使用独立分支，单次事件不需要额外 flag 判断。 */
-        switch (event.type) {
-        case TIMER_EVENT_PERIODIC_TICK:
+        switch (event.id) {
+        case TIMER_ID_0:
             /* 当前示例中 TIMER_ID_0 每秒产生一次周期事件。 */
-            ESP_LOGI(
-                g_tag,
-                "Timer0 periodic: period=%lums count=%llu us",
-                (unsigned long)event.period_ms,
-                (unsigned long long)event.count_us);
+            Timer0_HandleEvent(&event);
             break;
 
-        case TIMER_EVENT_BUZZER_STOP:
+        case TIMER_ID_1:
             /* 按键或 Touch 触发的 100 ms 单次蜂鸣器事件。 */
-            if (Buzzer_Passive_Stop() != ESP_OK) {
-                ESP_LOGW(g_tag, "Failed to stop passive buzzer");
-            }
+            Timer1_HandleEvent(&event);
             break;
 
-        case TIMER_EVENT_LED_BLINK:
+        case TIMER_ID_2:
             /* 预留给 ADC 报警闪烁或其他周期业务。 */
-            ESP_LOGI(g_tag, "Timer2 event");
+            Timer2_HandleEvent(&event);
             break;
 
-        case TIMER_EVENT_RGB_REFRESH:
+        case TIMER_ID_3:
             /* 预留给 RGB 动画或其他单次业务。 */
-            ESP_LOGI(g_tag, "Timer3 event");
+            Timer3_HandleEvent(&event);
             break;
 
         default:
