@@ -20,4 +20,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(AppTasks_Start());
     ESP_LOGI(g_tag, "Embedded contest workspace ready.");
+
+    /* 业务任务已创建完成，显式删除 ESP-IDF 的启动任务。 */
+    vTaskDelete(NULL);
 }
