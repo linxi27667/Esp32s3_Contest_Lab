@@ -1,6 +1,6 @@
 #include "config.h"
+#include "key_task.h"
 #include "main_task.h"
-#include "task_entries.h"
 
 static const char *g_tag = "KEY_TASK";
 

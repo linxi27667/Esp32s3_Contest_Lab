@@ -1,5 +1,5 @@
+#include "adc_task.h"
 #include "config.h"
-#include "task_entries.h"
 
 static const char *g_tag = "ADC_TASK";
 

@@ -1,5 +1,5 @@
 #include "config.h"
-#include "task_entries.h"
+#include "timer_task.h"
 
 static const char *g_tag = "TIMER_TASK";
 

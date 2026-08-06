@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+/** @brief 系统总状态机任务入口。 */
+void Main_Task(void *argument);
+
 /**
  * @brief 切换到下一个显示模式，并通知主任务刷新界面。
  *

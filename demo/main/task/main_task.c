@@ -1,5 +1,5 @@
 #include "config.h"
-#include "task_entries.h"
+#include "main_task.h"
 
 /* 比赛中的总模式和跨外设联动状态机放在本文件。 */
 typedef enum {

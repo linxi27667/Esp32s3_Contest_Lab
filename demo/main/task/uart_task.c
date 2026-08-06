@@ -1,6 +1,6 @@
 #include "config.h"
 #include "esp_log_buffer.h"
-#include "task_entries.h"
+#include "uart_task.h"
 
 static const char *g_tag = "UART_TASK";
 

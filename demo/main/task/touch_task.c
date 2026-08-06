@@ -1,5 +1,5 @@
 #include "config.h"
-#include "task_entries.h"
+#include "touch_task.h"
 
 static const char *g_tag = "TOUCH_TASK";
 

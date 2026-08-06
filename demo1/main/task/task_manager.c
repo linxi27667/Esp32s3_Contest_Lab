@@ -1,7 +1,12 @@
-#include "app_tasks.h"
+#include "task_manager.h"
 
+#include "adc_task.h"
 #include "config.h"
-#include "task_entries.h"
+#include "key_task.h"
+#include "main_task.h"
+#include "timer_task.h"
+#include "touch_task.h"
+#include "uart_task.h"
 
 static const char *g_tag = "TASK_MANAGER";
 
