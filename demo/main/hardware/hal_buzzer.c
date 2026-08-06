@@ -2,6 +2,7 @@
 
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "esp_timer.h"
 
 /* LEDC settings are implementation details of the passive-buzzer driver. */
 #define BUZZER_LEDC_MODE LEDC_LOW_SPEED_MODE
@@ -10,6 +11,16 @@
 #define BUZZER_LEDC_DUTY_RESOLUTION LEDC_TIMER_10_BIT
 #define BUZZER_LEDC_INIT_FREQUENCY_HZ 2000
 #define BUZZER_LEDC_DUTY 512
+
+/* 短鸣提示音使用独立软件定时器，不占用应用层的四路 GPTimer。 */
+static esp_timer_handle_t g_buzzer_stop_timer = NULL;
+
+/* esp_timer 回调运行在系统定时器任务中，可以调用普通任务上下文 API。 */
+static void Buzzer_Stop_Timer_Callback(void *argument)
+{
+    (void)argument;
+    (void)Buzzer_Passive_Stop();
+}
 
 /* 初始化有源蜂鸣器输出GPIO。 */
 static esp_err_t Active_Buzzer_Gpio_Init(void)
@@ -67,6 +78,19 @@ esp_err_t Buzzer_Init(void)
     }
 
     err = Passive_Buzzer_Ledc_Init();
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    const esp_timer_create_args_t timer_args = {
+        .callback = Buzzer_Stop_Timer_Callback,
+        .arg = NULL,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "buzzer_stop",
+        .skip_unhandled_events = true,
+    };
+
+    err = esp_timer_create(&timer_args, &g_buzzer_stop_timer);
     if (err != ESP_OK) {
         return err;
     }
@@ -136,4 +160,36 @@ esp_err_t Buzzer_Passive_Stop(void)
     return ledc_update_duty(
         BUZZER_LEDC_MODE,
         BUZZER_LEDC_CHANNEL);
+}
+
+/* 播放一次短提示音，停止时间由蜂鸣器库自己的 esp_timer 管理。 */
+esp_err_t Buzzer_Beep_Once(uint32_t frequency_hz, uint32_t duration_ms)
+{
+    if (frequency_hz == 0 || duration_ms == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g_buzzer_stop_timer == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t err = Buzzer_Passive_Play(frequency_hz);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    if (esp_timer_is_active(g_buzzer_stop_timer)) {
+        err = esp_timer_stop(g_buzzer_stop_timer);
+        if (err != ESP_OK) {
+            (void)Buzzer_Passive_Stop();
+            return err;
+        }
+    }
+
+    err = esp_timer_start_once(g_buzzer_stop_timer, (uint64_t)duration_ms * 1000ULL);
+    if (err != ESP_OK) {
+        /* 自动停止计时失败时立刻静音，避免蜂鸣器持续发声。 */
+        (void)Buzzer_Passive_Stop();
+    }
+
+    return err;
 }

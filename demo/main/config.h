@@ -1,6 +1,42 @@
 #pragma once
 
+/* 常用 C 语言类型、字符串、格式化和内存操作。 */
+#include <assert.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+
+/* ESP-IDF 基础错误、日志、系统和计时接口。 */
+#include "esp_err.h"
+#include "esp_log.h"
+#include "esp_attr.h"
+#include "esp_check.h"
+#include "esp_system.h"
+#include "esp_timer.h"
+
+/* FreeRTOS 任务、队列、信号量和基础类型。 */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
+
+/* 本模板使用到的 ESP-IDF 外设驱动。 */
 #include "driver/gpio.h"
+#include "driver/uart.h"
+#include "driver/gptimer.h"
+#include "driver/ledc.h"
+#include "driver/touch_sens.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "led_strip.h"
 
 /* LED示例引脚：根据开发板原理图修改。 */
 #define LED1_PIN GPIO_NUM_1
@@ -20,10 +56,28 @@
 #define ACTIVE_BUZZER_ON_LEVEL 1
 #define ACTIVE_BUZZER_OFF_LEVEL 0
 
-/* 按键示例引脚：按键另一端接GND，使用内部上拉，按下时为低电平。 */
-#define KEY_PIN GPIO_NUM_8
-#define KEY_ACTIVE_LEVEL 0
+/* 按键资源配置：默认启用 KEY_ID_0，按键另一端接 GND，按下时为低电平。 */
+#define KEY_ID_0_ENABLED 1
+#define KEY_ID_0_PIN GPIO_NUM_8
+#define KEY_ID_0_ACTIVE_LEVEL 0
+
+/* 其余按键默认关闭；使用时修改 ENABLED、PIN 和 ACTIVE_LEVEL。 */
+#define KEY_ID_1_ENABLED 0
+#define KEY_ID_1_PIN GPIO_NUM_NC
+#define KEY_ID_1_ACTIVE_LEVEL 0
+#define KEY_ID_2_ENABLED 0
+#define KEY_ID_2_PIN GPIO_NUM_NC
+#define KEY_ID_2_ACTIVE_LEVEL 0
+#define KEY_ID_3_ENABLED 0
+#define KEY_ID_3_PIN GPIO_NUM_NC
+#define KEY_ID_3_ACTIVE_LEVEL 0
+
 #define KEY_QUEUE_LENGTH 8
+
+/* 主业务任务：负责总状态机和多个外设之间的联动逻辑。 */
+#define MAIN_TASK_STACK_SIZE 4096
+#define MAIN_TASK_PRIORITY 6
+#define MAIN_TASK_INTERVAL_MS 10
 
 /* 按键任务配置。 */
 #define KEY_TASK_STACK_SIZE 2048
@@ -42,7 +96,6 @@
 #define TIMER_TASK_PRIORITY 5
 
 /* UART：UART_NUM_0 由 ESP-IDF console 管理，下面只配置外部通信 UART。 */
-#include "driver/uart.h"
 #define UART_EXTERNAL_PORT_NUM UART_NUM_1
 #define UART_EXTERNAL_TX_PIN GPIO_NUM_17
 #define UART_EXTERNAL_RX_PIN GPIO_NUM_18
@@ -82,7 +135,6 @@
 /* ADC：仅用 ADC1（ADC2 开 WiFi 时不稳）。S3 上 ADC1_CHx ↔ GPIOx+1 规律见手册。
  * ADC_DEFAULT_ATTEN 是 ADC 引脚的输入衰减，不代表可直接安全测量 3.3 V。
  * 要测 3.3 V 电源，请先用电阻分压将 ADC 引脚电压限制在芯片 ADC 范围内。 */
-#include "esp_adc/adc_oneshot.h"
 #define ADC0_CHANNEL ADC_CHANNEL_8 /* GPIO9  相对空闲 */
 #define ADC1_CHANNEL ADC_CHANNEL_9 /* GPIO10 相对空闲 */
 #define ADC2_CHANNEL ADC_CHANNEL_6 /* GPIO7  默认与无源蜂鸣示例冲突，用前改脚 */

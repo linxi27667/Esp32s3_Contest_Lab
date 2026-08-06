@@ -6,14 +6,33 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 
+/* KEY_ID_x 是按键资源编号，和 TIMER_ID_x 的使用方式一致。 */
+typedef enum {
+    KEY_ID_0 = 0, /**< 默认按键，对应 config.h 中的 KEY_ID_0_PIN。 */
+    KEY_ID_1,     /**< 第二个按键资源。 */
+    KEY_ID_2,     /**< 第三个按键资源。 */
+    KEY_ID_3,     /**< 第四个按键资源。 */
+    KEY_ID_COUNT,
+} key_id_t;
+
+/* 按键事件类型；可以在应用层按需继续扩展。 */
+typedef enum {
+    KEY_EVENT_NONE = 0,
+    KEY_EVENT_PRESSED,
+    KEY_EVENT_RELEASED,
+    KEY_EVENT_COUNT,
+} key_event_type_t;
+
 typedef struct {
-    gpio_num_t pin; /**< 产生事件的 GPIO，本库当前固定为 KEY_PIN。 */
+    key_id_t id;              /**< 产生事件的按键编号。 */
+    key_event_type_t type;    /**< 按下或释放事件类型。 */
+    gpio_num_t pin;           /**< 产生事件的 GPIO，便于日志和调试。 */
 } key_event_t;
 
 /**
- * @brief 初始化按键 GPIO，供轮询读取或扫描模式使用。
+ * @brief 初始化所有启用按键的 GPIO，供轮询读取或中断模式使用。
  *
- * 按键默认使用内部上拉，按下有效电平由 config.h 中的 KEY_ACTIVE_LEVEL 决定。
+ * 每个按键是否启用、GPIO 和有效电平由 config.h 中的 KEY_ID_x_* 宏决定。
  *
  * @retval ESP_OK 初始化成功。
  * @retval ESP_ERR_INVALID_STATE 按键 GPIO 已经初始化。
@@ -22,7 +41,7 @@ typedef struct {
 esp_err_t Key_Init(void);
 
 /**
- * @brief 初始化按键 GPIO、下降沿中断和事件队列。
+ * @brief 初始化所有启用按键的 GPIO、双边沿中断和事件队列。
  *
  * 可以直接调用，无需先调用 Key_Init()。中断服务程序只发送事件，消抖应在任务中完成。
  *
@@ -36,7 +55,8 @@ esp_err_t Key_Interrupt_Init(void);
 /**
  * @brief 在任务中等待一个按键中断事件。
  *
- * @param[out] event 接收事件的结构体地址，不能为 NULL。成功后 event->pin 为按键 GPIO。
+ * @param[out] event 接收事件的结构体地址，不能为 NULL。成功后可通过
+ *                   event->id 和 event->type 区分按键及其动作。
  * @param[in] timeout_ticks 等待时间，单位为 FreeRTOS tick。可填：
  *                          0 表示立即返回；
  *                          pdMS_TO_TICKS(ms) 表示等待指定毫秒；
@@ -59,7 +79,7 @@ esp_err_t Key_GetEvent(key_event_t *event, TickType_t timeout_ticks);
  * @retval ESP_ERR_INVALID_ARG pressed 为 NULL。
  * @retval ESP_ERR_INVALID_STATE 尚未初始化按键 GPIO。
  */
-esp_err_t Key_IsPressed(bool *pressed);
+esp_err_t Key_IsPressed(key_id_t id, bool *pressed);
 
 /**
  * @brief 轮询扫描按键，并在状态变化时进行 20 ms 软件消抖。
@@ -72,4 +92,4 @@ esp_err_t Key_IsPressed(bool *pressed);
  * @note 调用前先执行 Key_Init() 或 Key_Interrupt_Init()。本函数内部可能阻塞 20 ms，
  *       只能在任务中调用，不能在 ISR 中调用。
  */
-esp_err_t Key_Scan(bool *pressed);
+esp_err_t Key_Scan(key_id_t id, bool *pressed);

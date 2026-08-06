@@ -1,5 +1,12 @@
 idf_component_register(SRCS
                            "main.c"
+                           "task/task_manager.c"
+                           "task/main_task.c"
+                           "task/key_task.c"
+                           "task/touch_task.c"
+                           "task/timer_task.c"
+                           "task/uart_task.c"
+                           "task/adc_task.c"
                            "app/app_protocol.c"
                            "app/debug_console.c"
                            "hardware/hal_led.c"
@@ -15,6 +22,7 @@ idf_component_register(SRCS
                            "."
                            "app"
                            "hardware"
+                           "task"
                        REQUIRES
                            esp_driver_gpio
                            esp_driver_ledc
@@ -22,6 +30,7 @@ idf_component_register(SRCS
                            esp_driver_uart
                            esp_driver_touch_sens
                            esp_adc
+                           esp_timer
                            nvs_flash
                            led_strip
                            console)

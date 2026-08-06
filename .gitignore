@@ -1,6 +1,7 @@
 # ESP-IDF build output and caches
 **/build/
 **/.cache/
+**/managed_components/
 
 # Generated ESP-IDF configuration backups
 **/sdkconfig.old

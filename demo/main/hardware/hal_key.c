@@ -5,83 +5,135 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
+typedef struct {
+    gpio_num_t pin;
+    uint8_t active_level;
+    bool enabled;
+    bool initialized;
+} key_slot_t;
+
+/* 每个 KEY_ID 对应一个可独立配置的 GPIO 按键资源。 */
+static key_slot_t g_keys[KEY_ID_COUNT] = {
+    [KEY_ID_0] = {
+        .pin = KEY_ID_0_PIN,
+        .active_level = KEY_ID_0_ACTIVE_LEVEL,
+        .enabled = KEY_ID_0_ENABLED,
+    },
+    [KEY_ID_1] = {
+        .pin = KEY_ID_1_PIN,
+        .active_level = KEY_ID_1_ACTIVE_LEVEL,
+        .enabled = KEY_ID_1_ENABLED,
+    },
+    [KEY_ID_2] = {
+        .pin = KEY_ID_2_PIN,
+        .active_level = KEY_ID_2_ACTIVE_LEVEL,
+        .enabled = KEY_ID_2_ENABLED,
+    },
+    [KEY_ID_3] = {
+        .pin = KEY_ID_3_PIN,
+        .active_level = KEY_ID_3_ACTIVE_LEVEL,
+        .enabled = KEY_ID_3_ENABLED,
+    },
+};
+
 /* 中断和任务之间通过队列传递按键事件。 */
 static QueueHandle_t g_key_event_queue = NULL;
 static bool g_key_initialized = false;
-/* 轮询模式保存上一次确认过的稳定状态。 */
-static bool g_key_scan_pressed = false;
+static bool g_key_scan_pressed[KEY_ID_COUNT];
 
-/* 按键GPIO中断回调：仅入队事件，不在ISR中消抖。 */
-static void IRAM_ATTR Key_Isr_Handler(void *argument)
+static bool Key_Id_IsValid(key_id_t id)
 {
-    (void)argument;
-
-    const key_event_t event = {
-        .pin = KEY_PIN,
-    };
-    BaseType_t higher_priority_task_woken = pdFALSE;
-
-    if (g_key_event_queue != NULL) {
-        xQueueSendFromISR(
-            g_key_event_queue,
-            &event,
-            &higher_priority_task_woken);
-        portYIELD_FROM_ISR(higher_priority_task_woken);
-    }
+    return id >= KEY_ID_0 && id < KEY_ID_COUNT && g_keys[id].enabled;
 }
 
-/* 按指定中断类型配置按键输入GPIO。 */
-static esp_err_t Key_Gpio_Init(gpio_int_type_t interrupt_type)
+/* 按键 GPIO 中断回调：只采集边沿和来源，不在 ISR 中做业务逻辑。 */
+static void IRAM_ATTR Key_Isr_Handler(void *argument)
 {
+    const key_id_t id = (key_id_t)(uintptr_t)argument;
+    BaseType_t higher_priority_task_woken = pdFALSE;
+
+    if (!Key_Id_IsValid(id) || g_key_event_queue == NULL) {
+        return;
+    }
+
+    const bool pressed =
+        gpio_get_level(g_keys[id].pin) == g_keys[id].active_level;
+    const key_event_t event = {
+        .id = id,
+        .type = pressed ? KEY_EVENT_PRESSED : KEY_EVENT_RELEASED,
+        .pin = g_keys[id].pin,
+    };
+
+    xQueueSendFromISR(
+        g_key_event_queue,
+        &event,
+        &higher_priority_task_woken);
+    portYIELD_FROM_ISR(higher_priority_task_woken);
+}
+
+static esp_err_t Key_Gpio_Init(key_id_t id, gpio_int_type_t interrupt_type)
+{
+    if (!Key_Id_IsValid(id)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const key_slot_t *slot = &g_keys[id];
     const gpio_config_t config = {
-        .pin_bit_mask = 1ULL << KEY_PIN,
+        .pin_bit_mask = 1ULL << slot->pin,
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = slot->active_level == 0
+            ? GPIO_PULLUP_ENABLE
+            : GPIO_PULLUP_DISABLE,
+        .pull_down_en = slot->active_level == 1
+            ? GPIO_PULLDOWN_ENABLE
+            : GPIO_PULLDOWN_DISABLE,
         .intr_type = interrupt_type,
     };
 
     return gpio_config(&config);
 }
 
-/* 只初始化按键GPIO，供轮询扫描模式使用。 */
 esp_err_t Key_Init(void)
 {
     if (g_key_initialized) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    esp_err_t err = Key_Gpio_Init(GPIO_INTR_DISABLE);
-    if (err != ESP_OK) {
-        return err;
+    bool any_enabled = false;
+    for (int i = 0; i < KEY_ID_COUNT; ++i) {
+        if (!g_keys[i].enabled) {
+            continue;
+        }
+
+        esp_err_t err = Key_Gpio_Init((key_id_t)i, GPIO_INTR_DISABLE);
+        if (err != ESP_OK) {
+            return err;
+        }
+
+        g_keys[i].initialized = true;
+        any_enabled = true;
+    }
+
+    if (!any_enabled) {
+        return ESP_ERR_INVALID_ARG;
     }
 
     g_key_initialized = true;
     return ESP_OK;
 }
 
-/* 配置按键GPIO并安装外部中断。 */
 esp_err_t Key_Interrupt_Init(void)
 {
     if (g_key_event_queue != NULL) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    /* 中断模式先完成GPIO初始化，再创建事件队列。 */
     esp_err_t err = Key_Init();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         return err;
     }
 
-    /* 中断模式才打开下降沿触发。 */
-    err = gpio_set_intr_type(KEY_PIN, GPIO_INTR_NEGEDGE);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    g_key_event_queue = xQueueCreate(
-        KEY_QUEUE_LENGTH,
-        sizeof(key_event_t));
+    g_key_event_queue = xQueueCreate(KEY_QUEUE_LENGTH, sizeof(key_event_t));
     if (g_key_event_queue == NULL) {
         return ESP_ERR_NO_MEM;
     }
@@ -93,17 +145,32 @@ esp_err_t Key_Interrupt_Init(void)
         return err;
     }
 
-    err = gpio_isr_handler_add(KEY_PIN, Key_Isr_Handler, NULL);
-    if (err != ESP_OK) {
-        vQueueDelete(g_key_event_queue);
-        g_key_event_queue = NULL;
-        return err;
+    for (int i = 0; i < KEY_ID_COUNT; ++i) {
+        if (!g_keys[i].enabled) {
+            continue;
+        }
+
+        err = gpio_set_intr_type(g_keys[i].pin, GPIO_INTR_ANYEDGE);
+        if (err != ESP_OK) {
+            vQueueDelete(g_key_event_queue);
+            g_key_event_queue = NULL;
+            return err;
+        }
+
+        err = gpio_isr_handler_add(
+            g_keys[i].pin,
+            Key_Isr_Handler,
+            (void *)(uintptr_t)i);
+        if (err != ESP_OK) {
+            vQueueDelete(g_key_event_queue);
+            g_key_event_queue = NULL;
+            return err;
+        }
     }
 
     return ESP_OK;
 }
 
-/* 在任务中等待按键中断事件。 */
 esp_err_t Key_GetEvent(key_event_t *event, TickType_t timeout_ticks)
 {
     if (event == NULL) {
@@ -113,59 +180,52 @@ esp_err_t Key_GetEvent(key_event_t *event, TickType_t timeout_ticks)
         return ESP_ERR_INVALID_STATE;
     }
 
-    return xQueueReceive(
-               g_key_event_queue,
-               event,
-               timeout_ticks) == pdTRUE
-               ? ESP_OK
-               : ESP_ERR_TIMEOUT;
+    return xQueueReceive(g_key_event_queue, event, timeout_ticks) == pdTRUE
+        ? ESP_OK
+        : ESP_ERR_TIMEOUT;
 }
 
-/* 读取当前按键是否处于按下状态。 */
-esp_err_t Key_IsPressed(bool *pressed)
+esp_err_t Key_IsPressed(key_id_t id, bool *pressed)
 {
-    if (pressed == NULL) {
+    if (pressed == NULL || !Key_Id_IsValid(id)) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!g_key_initialized) {
+    if (!g_key_initialized || !g_keys[id].initialized) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    *pressed = gpio_get_level(KEY_PIN) == KEY_ACTIVE_LEVEL;
+    *pressed = gpio_get_level(g_keys[id].pin) == g_keys[id].active_level;
     return ESP_OK;
 }
 
-/* 轮询扫描按键并用延时消抖；只能在任务中调用，不能在ISR中调用。 */
-esp_err_t Key_Scan(bool *pressed)
+esp_err_t Key_Scan(key_id_t id, bool *pressed)
 {
-    if (pressed == NULL) {
+    if (pressed == NULL || !Key_Id_IsValid(id)) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!g_key_initialized) {
+    if (!g_key_initialized || !g_keys[id].initialized) {
         return ESP_ERR_INVALID_STATE;
     }
 
     bool current_pressed = false;
-    esp_err_t err = Key_IsPressed(&current_pressed);
+    esp_err_t err = Key_IsPressed(id, &current_pressed);
     if (err != ESP_OK) {
         return err;
     }
 
-    /* 只有检测到状态变化时才延时，避免每次扫描都阻塞20ms。 */
-    if (current_pressed != g_key_scan_pressed) {
+    if (current_pressed != g_key_scan_pressed[id]) {
         vTaskDelay(pdMS_TO_TICKS(20));
 
-        err = Key_IsPressed(&current_pressed);
+        err = Key_IsPressed(id, &current_pressed);
         if (err != ESP_OK) {
             return err;
         }
 
-        /* 延时后状态仍然一致，才认为按键状态真的改变。 */
-        if (current_pressed != g_key_scan_pressed) {
-            g_key_scan_pressed = current_pressed;
+        if (current_pressed != g_key_scan_pressed[id]) {
+            g_key_scan_pressed[id] = current_pressed;
         }
     }
 
-    *pressed = g_key_scan_pressed;
+    *pressed = g_key_scan_pressed[id];
     return ESP_OK;
 }
