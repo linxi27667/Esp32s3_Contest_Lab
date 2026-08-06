@@ -1,4 +1,6 @@
 #include "config.h"
+
+#include "driver/gpio.h"
 #include "driver/ledc.h"
 
 /* LEDC settings are implementation details of the passive-buzzer driver. */

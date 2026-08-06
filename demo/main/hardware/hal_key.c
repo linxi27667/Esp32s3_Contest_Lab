@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include "driver/gpio.h"
 #include "esp_attr.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"

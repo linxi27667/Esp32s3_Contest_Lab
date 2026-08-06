@@ -11,15 +11,33 @@ typedef struct {
     int tx_pin;
     int rx_pin;
     int baud_rate;
+    bool enabled;
     bool ready;
 } uart_slot_t;
 
 static uart_slot_t g_uarts[UART_ID_COUNT] = {
-    {
-        .port = UART_EXTERNAL_PORT_NUM,
-        .tx_pin = UART_EXTERNAL_TX_PIN,
-        .rx_pin = UART_EXTERNAL_RX_PIN,
-        .baud_rate = UART_EXTERNAL_BAUD_RATE,
+    [UART_ID_0] = {
+        .port = UART_ID_0_PORT_NUM,
+        .tx_pin = UART_ID_0_TX_PIN,
+        .rx_pin = UART_ID_0_RX_PIN,
+        .baud_rate = UART_ID_0_BAUD_RATE,
+        .enabled = UART_ID_0_ENABLED,
+        .ready = false,
+    },
+    [UART_ID_1] = {
+        .port = UART_ID_1_PORT_NUM,
+        .tx_pin = UART_ID_1_TX_PIN,
+        .rx_pin = UART_ID_1_RX_PIN,
+        .baud_rate = UART_ID_1_BAUD_RATE,
+        .enabled = UART_ID_1_ENABLED,
+        .ready = false,
+    },
+    [UART_ID_2] = {
+        .port = UART_ID_2_PORT_NUM,
+        .tx_pin = UART_ID_2_TX_PIN,
+        .rx_pin = UART_ID_2_RX_PIN,
+        .baud_rate = UART_ID_2_BAUD_RATE,
+        .enabled = UART_ID_2_ENABLED,
         .ready = false,
     },
 };
@@ -92,6 +110,10 @@ esp_err_t Uart_Init(void)
     }
 
     for (int i = 0; i < UART_ID_COUNT; ++i) {
+        if (!g_uarts[i].enabled) {
+            continue;
+        }
+
         esp_err_t err = Uart_Init_One((uart_id_t)i);
         if (err != ESP_OK) {
             Uart_Deinit_All();
