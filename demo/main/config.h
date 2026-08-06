@@ -14,19 +14,11 @@
     ((1ULL << LED1_PIN) | (1ULL << LED2_PIN) | \
      (1ULL << LED3_PIN) | (1ULL << LED4_PIN))
 
-/* ESP-IDF中任务栈参数的单位是字节。 */
-#define LED_TASK_STACK_SIZE 2048
-#define LED_TASK_PRIORITY 5
-
 /* 蜂鸣器示例引脚：根据开发板原理图修改。 */
 #define ACTIVE_BUZZER_PIN GPIO_NUM_6
 #define PASSIVE_BUZZER_PIN GPIO_NUM_7
 #define ACTIVE_BUZZER_ON_LEVEL 1
 #define ACTIVE_BUZZER_OFF_LEVEL 0
-
-/* 蜂鸣器任务配置。 */
-#define BUZZER_TASK_STACK_SIZE 2048
-#define BUZZER_TASK_PRIORITY 5
 
 /* 按键示例引脚：按键另一端接GND，使用内部上拉，按下时为低电平。 */
 #define KEY_PIN GPIO_NUM_8
@@ -36,6 +28,10 @@
 /* 按键任务配置。 */
 #define KEY_TASK_STACK_SIZE 2048
 #define KEY_TASK_PRIORITY 5
+
+/* 触摸任务配置：触摸硬件连续扫描，应用层按固定周期读取状态。 */
+#define TOUCH_TASK_STACK_SIZE 3072
+#define TOUCH_TASK_PRIORITY 5
 
 /* 硬件定时器：GPTimer 分辨率 1MHz，事件队列长度。 */
 #define TIMER_QUEUE_LENGTH 8
@@ -81,10 +77,29 @@
 #define ADC_TASK_PRIORITY 5
 #define ADC_SAMPLE_INTERVAL_MS 1000
 
-/* HAL headers */
+/* 电容触摸输入：ESP32-S3 的触摸通道 14 对应 GPIO14。 */
+#define TOUCH_CHANNEL_ID 14
+#define TOUCH_INITIAL_SCAN_TIMES 3
+#define TOUCH_SCAN_TIMEOUT_MS 2000
+#define TOUCH_THRESHOLD_PERCENT 3
+
+/* 非易失存储：NVS 命名空间和键名的长度均不能超过 15 个字符。 */
+#define NVS_NAMESPACE "contest"
+
+/* 可编程全彩灯：使用 RMT 驱动兼容 WS2812 的 RGB 灯带。 */
+#define RGB_LED_PIN GPIO_NUM_11
+#define RGB_LED_DEFAULT_COUNT 1
+#define RGB_LED_RMT_RESOLUTION_HZ 10000000
+#define RGB_LED_DEFAULT_BRIGHTNESS 64
+#define RGB_LED_RAINBOW_STEP_DEGREES 3
+
+/* 硬件抽象层头文件。 */
 #include "hal_led.h"
 #include "hal_buzzer.h"
 #include "hal_key.h"
 #include "hal_timer.h"
 #include "hal_uart.h"
 #include "hal_adc.h"
+#include "hal_touch.h"
+#include "hal_nvs.h"
+#include "hal_rgb_led.h"

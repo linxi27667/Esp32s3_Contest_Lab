@@ -8,6 +8,9 @@ idf_component_register(SRCS
                            "hardware/hal_timer.c"
                            "hardware/hal_uart.c"
                            "hardware/hal_adc.c"
+                           "hardware/hal_touch.c"
+                           "hardware/hal_nvs.c"
+                           "hardware/hal_rgb_led.c"
                        INCLUDE_DIRS
                            "."
                            "app"
@@ -17,5 +20,8 @@ idf_component_register(SRCS
                            esp_driver_ledc
                            esp_driver_gptimer
                            esp_driver_uart
+                           esp_driver_touch_sens
                            esp_adc
+                           nvs_flash
+                           led_strip
                            console)

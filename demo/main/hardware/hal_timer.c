@@ -11,6 +11,7 @@
 
 typedef struct {
     gptimer_handle_t handle;
+    timer_event_type_t type;
     uint32_t period_ms;
     bool oneshot;
     bool running;
@@ -44,6 +45,7 @@ static bool IRAM_ATTR Timer_Isr_Handler(
     if (g_timer_event_queue != NULL) {
         const timer_event_t event = {
             .id = id,
+            .type = slot->type,
             .count_us = edata->count_value,
             .period_ms = slot->period_ms,
         };
@@ -60,6 +62,7 @@ static bool IRAM_ATTR Timer_Isr_Handler(
 /* 配置指定定时器闹钟并启动；oneshot为true表示单次，false表示周期。 */
 static esp_err_t Timer_Start_Internal(
     timer_id_t id,
+    timer_event_type_t type,
     uint32_t period_ms,
     bool oneshot)
 {
@@ -67,6 +70,9 @@ static esp_err_t Timer_Start_Internal(
         return ESP_ERR_INVALID_STATE;
     }
     if (id < 0 || id >= TIMER_ID_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (type <= TIMER_EVENT_NONE || type >= TIMER_EVENT_COUNT) {
         return ESP_ERR_INVALID_ARG;
     }
     if (period_ms == 0) {
@@ -86,6 +92,7 @@ static esp_err_t Timer_Start_Internal(
         slot->running = false;
     }
 
+    slot->type = type;
     slot->period_ms = period_ms;
     slot->oneshot = oneshot;
 
@@ -184,6 +191,7 @@ esp_err_t Timer_Init(void)
         }
 
         g_timers[i].period_ms = 0;
+        g_timers[i].type = TIMER_EVENT_NONE;
         g_timers[i].oneshot = false;
         g_timers[i].running = false;
     }
@@ -193,15 +201,21 @@ esp_err_t Timer_Init(void)
 }
 
 /* 周期闹钟：指定定时器每 period_ms 毫秒触发一次，ISR入队。 */
-esp_err_t Timer_Start_Periodic_Ms(timer_id_t id, uint32_t period_ms)
+esp_err_t Timer_Start_Periodic_Ms(
+    timer_id_t id,
+    timer_event_type_t type,
+    uint32_t period_ms)
 {
-    return Timer_Start_Internal(id, period_ms, false);
+    return Timer_Start_Internal(id, type, period_ms, false);
 }
 
 /* 单次闹钟：指定定时器 delay_ms 毫秒后触发一次，ISR入队后自动停止。 */
-esp_err_t Timer_Start_OneShot_Ms(timer_id_t id, uint32_t delay_ms)
+esp_err_t Timer_Start_OneShot_Ms(
+    timer_id_t id,
+    timer_event_type_t type,
+    uint32_t delay_ms)
 {
-    return Timer_Start_Internal(id, delay_ms, true);
+    return Timer_Start_Internal(id, type, delay_ms, true);
 }
 
 /* 停止指定定时器计数；可再次 Start。 */

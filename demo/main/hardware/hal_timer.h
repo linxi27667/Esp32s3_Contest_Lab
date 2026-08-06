@@ -15,7 +15,19 @@ typedef enum {
     TIMER_ID_COUNT,
 } timer_id_t;
 
+/* Timer events delivered to the application layer. */
+typedef enum {
+    TIMER_EVENT_NONE = 0,
+    TIMER_EVENT_PERIODIC_TICK,
+    TIMER_EVENT_BUZZER_STOP,
+    TIMER_EVENT_BOOT_COMPLETE,
+    TIMER_EVENT_LED_BLINK,
+    TIMER_EVENT_RGB_REFRESH,
+    TIMER_EVENT_COUNT,
+} timer_event_type_t;
+
 typedef struct {
+    timer_event_type_t type;
     timer_id_t id;     /**< 产生事件的定时器编号。 */
     uint64_t count_us; /**< 触发闹钟时的计数值，单位微秒。 */
     uint32_t period_ms;/**< 当前配置的周期或单次延时，单位毫秒。 */
@@ -43,7 +55,10 @@ esp_err_t Timer_Init(void);
  * @retval 其他值 GPTimer 停止、配置或启动失败。
  * @note 如果该定时器正在运行，本函数会先停止，再从 0 开始按新周期运行。
  */
-esp_err_t Timer_Start_Periodic_Ms(timer_id_t id, uint32_t period_ms);
+esp_err_t Timer_Start_Periodic_Ms(
+    timer_id_t id,
+    timer_event_type_t type,
+    uint32_t period_ms);
 
 /**
  * @brief 启动或重启一路单次定时器，触发一次后自动停止。
@@ -56,7 +71,10 @@ esp_err_t Timer_Start_Periodic_Ms(timer_id_t id, uint32_t period_ms);
  * @retval ESP_ERR_INVALID_STATE 尚未调用 Timer_Init()。
  * @retval 其他值 GPTimer 停止、配置或启动失败。
  */
-esp_err_t Timer_Start_OneShot_Ms(timer_id_t id, uint32_t delay_ms);
+esp_err_t Timer_Start_OneShot_Ms(
+    timer_id_t id,
+    timer_event_type_t type,
+    uint32_t delay_ms);
 
 /**
  * @brief 停止指定定时器，之后仍可重新启动。

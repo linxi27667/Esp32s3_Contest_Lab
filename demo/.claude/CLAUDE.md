@@ -41,8 +41,8 @@
 - `main/hardware/hal_timer.c` uses ESP-IDF GPTimer at 1 MHz resolution (1 tick = 1 µs).
 - Select timers like STM32 TIMx via `timer_id_t`: `TIMER_ID_0`..`TIMER_ID_3` (`TIMER_ID_COUNT` is 4, full ESP32-S3 GPTimer set).
 - `Timer_Init()` creates all GPTimer instances, one shared event queue, registers ISRs, and enables timers without starting them.
-- `Timer_Start_Periodic_Ms(id, ms)` / `Timer_Start_OneShot_Ms(id, ms)` / `Timer_Stop(id)` operate on the selected timer.
-- The alarm ISR queues a `timer_event_t` with `.id`; `Timer_Task` waits with `Timer_GetEvent()` and branches on `event.id`.
+- `Timer_Start_Periodic_Ms(id, type, ms)` / `Timer_Start_OneShot_Ms(id, type, ms)` / `Timer_Stop(id)` operate on the selected timer.
+- The alarm ISR queues a `timer_event_t` with `.id` and `.type`; `Timer_Task` waits with `Timer_GetEvent()` and dispatches the business event by `event.type`.
 - GPTimer callbacks request a yield by returning `true`; do not call `portYIELD_FROM_ISR` inside the alarm callback.
 - Default demo period is `TIMER_DEFAULT_PERIOD_MS` in `main/config.h` (demo starts `TIMER_ID_0` only).
 

@@ -7,9 +7,8 @@
 
 static const char *g_tag = "MAIN";
 
-static TaskHandle_t g_led_task_handle = NULL;
-static TaskHandle_t g_buzzer_task_handle = NULL;
 static TaskHandle_t g_key_task_handle = NULL;
+static TaskHandle_t g_touch_task_handle = NULL;
 static TaskHandle_t g_timer_task_handle = NULL;
 static TaskHandle_t g_external_uart_task_handle = NULL;
 static TaskHandle_t g_adc_task_handle = NULL;
@@ -38,26 +37,24 @@ static esp_err_t Task_Create(
     return ESP_OK;
 }
 
-/* LED应用任务模板：在循环中编写业务，每轮必须阻塞。 */
-static void Led_Task(void *argument)
+/* 启动一次指定频率的蜂鸣器声音，并由单次定时器负责自动停止。 */
+static esp_err_t Buzzer_Beep_Once(uint32_t frequency_hz, uint32_t duration_ms)
 {
-    (void)argument;
-
-    while (true) {
-        /* LED任务业务写在这里；每轮必须等待、延时或阻塞。 */
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    esp_err_t err = Buzzer_Passive_Play(frequency_hz);
+    if (err != ESP_OK) {
+        return err;
     }
-}
 
-/* 蜂鸣器应用任务模板：调用有源/无源蜂鸣器接口。 */
-static void Buzzer_Task(void *argument)
-{
-    (void)argument;
-
-    while (true) {
-        /* 蜂鸣器业务写在这里，调用Buzzer_Active_Set()或Buzzer_Passive_Play()。 */
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    err = Timer_Start_OneShot_Ms(
+        TIMER_ID_1,
+        TIMER_EVENT_BUZZER_STOP,
+        duration_ms);
+    if (err != ESP_OK) {
+        /* 定时器启动失败时，不能让蜂鸣器一直响。 */
+        (void)Buzzer_Passive_Stop();
     }
+
+    return err;
 }
 
 /* 按键应用任务：等待中断事件，消抖后处理按下业务。 */
@@ -83,6 +80,33 @@ static void Key_Task(void *argument)
 
         /* 在这里写按键按下后的业务。 */
         ESP_LOGI(g_tag, "Key pressed on GPIO%d", event.pin);
+
+        if (Buzzer_Beep_Once(1000, 100) != ESP_OK) {
+            ESP_LOGW(g_tag, "Failed to start key beep");
+        }
+    }
+}
+
+/* 触摸应用任务：触摸硬件连续扫描，任务周期读取并检测状态边沿。 */
+static void Touch_Task(void *argument)
+{
+    (void)argument;
+
+    bool previous_pressed = false;
+
+    while (true) {
+        bool pressed = false;
+        if (Touch_IsPressed(&pressed) == ESP_OK && pressed != previous_pressed) {
+            previous_pressed = pressed;
+            ESP_LOGI(g_tag, "Touch %s", pressed ? "pressed" : "released");
+
+            if (pressed && Buzzer_Beep_Once(2000, 100) != ESP_OK) {
+                ESP_LOGW(g_tag, "Failed to start touch beep");
+            }
+        }
+
+        /* 20 ms 足够完成触摸响应，同时避免任务空转占用 CPU。 */
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
@@ -99,13 +123,38 @@ static void Timer_Task(void *argument)
             continue;
         }
 
-        /* 在这里写定时到达后的业务；用 event.id 区分 TIMER_ID_0..TIMER_ID_3。 */
-        ESP_LOGI(
-            g_tag,
-            "Timer%u alarm: period=%lums count=%llu us",
-            (unsigned)event.id,
-            (unsigned long)event.period_ms,
-            (unsigned long long)event.count_us);
+        /* 每一路定时器使用独立分支，单次事件不需要额外 flag 判断。 */
+        switch (event.type) {
+        case TIMER_EVENT_PERIODIC_TICK:
+            /* 当前示例中 TIMER_ID_0 每秒产生一次周期事件。 */
+            ESP_LOGI(
+                g_tag,
+                "Timer0 periodic: period=%lums count=%llu us",
+                (unsigned long)event.period_ms,
+                (unsigned long long)event.count_us);
+            break;
+
+        case TIMER_EVENT_BUZZER_STOP:
+            /* 按键或 Touch 触发的 100 ms 单次蜂鸣器事件。 */
+            if (Buzzer_Passive_Stop() != ESP_OK) {
+                ESP_LOGW(g_tag, "Failed to stop passive buzzer");
+            }
+            break;
+
+        case TIMER_EVENT_LED_BLINK:
+            /* 预留给 ADC 报警闪烁或其他周期业务。 */
+            ESP_LOGI(g_tag, "Timer2 event");
+            break;
+
+        case TIMER_EVENT_RGB_REFRESH:
+            /* 预留给 RGB 动画或其他单次业务。 */
+            ESP_LOGI(g_tag, "Timer3 event");
+            break;
+
+        default:
+            ESP_LOGW(g_tag, "Unknown timer event: %u", (unsigned)event.id);
+            break;
+        }
     }
 }
 
@@ -160,33 +209,23 @@ static void Adc_Task(void *argument)
 /* 创建全部应用任务；统一任务注册入口。 */
 static esp_err_t Task_CreateAll(void)
 {
-    /* 所有应用任务只在这里创建。 */
+    /* 输入和数据源任务只在这里创建；LED、RGB 灯和蜂鸣器由业务事件直接驱动。 */
     esp_err_t err = Task_Create(
-        Led_Task,
-        "Led_Task",
-        LED_TASK_STACK_SIZE,
-        LED_TASK_PRIORITY,
-        &g_led_task_handle);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = Task_Create(
-        Buzzer_Task,
-        "Buzzer_Task",
-        BUZZER_TASK_STACK_SIZE,
-        BUZZER_TASK_PRIORITY,
-        &g_buzzer_task_handle);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    err = Task_Create(
         Key_Task,
         "Key_Task",
         KEY_TASK_STACK_SIZE,
         KEY_TASK_PRIORITY,
         &g_key_task_handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    err = Task_Create(
+        Touch_Task,
+        "Touch_Task",
+        TOUCH_TASK_STACK_SIZE,
+        TOUCH_TASK_PRIORITY,
+        &g_touch_task_handle);
     if (err != ESP_OK) {
         return err;
     }
@@ -223,12 +262,18 @@ static esp_err_t Task_CreateAll(void)
 void app_main(void)
 {
     /* ESP-IDF应用入口 */
+    ESP_ERROR_CHECK(Nvs_Init());
     ESP_ERROR_CHECK(Led_Init());
+    ESP_ERROR_CHECK(RgbLed_Init(RGB_LED_DEFAULT_COUNT));
     ESP_ERROR_CHECK(Buzzer_Init());
     ESP_ERROR_CHECK(Key_Interrupt_Init());
+    ESP_ERROR_CHECK(Touch_Init());
     ESP_ERROR_CHECK(Timer_Init());
     /* 示例：只开 TIMER_ID_0；需要更多路时再 Start TIMER_ID_1..3。 */
-    ESP_ERROR_CHECK(Timer_Start_Periodic_Ms(TIMER_ID_0, TIMER_DEFAULT_PERIOD_MS));
+    ESP_ERROR_CHECK(Timer_Start_Periodic_Ms(
+        TIMER_ID_0,
+        TIMER_EVENT_PERIODIC_TICK,
+        TIMER_DEFAULT_PERIOD_MS));
     ESP_ERROR_CHECK(Uart_Init());
     ESP_ERROR_CHECK(Adc_Init());
     ESP_ERROR_CHECK(Debug_Console_Init());
