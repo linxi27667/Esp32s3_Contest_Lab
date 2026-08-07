@@ -80,7 +80,7 @@
 #define MAIN_TASK_INTERVAL_MS 10
 
 /* 按键任务配置。 */
-#define KEY_TASK_STACK_SIZE 2048
+#define KEY_TASK_STACK_SIZE 3072
 #define KEY_TASK_PRIORITY 5
 
 /* 触摸任务配置：触摸硬件连续扫描，应用层按固定周期读取状态。 */

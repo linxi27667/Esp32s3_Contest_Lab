@@ -121,17 +121,17 @@ esp_err_t Buzzer_Passive_Play(uint32_t frequency_hz)
         return ESP_ERR_INVALID_ARG;
     }
 
-    /* 修改LEDC输出频率；返回0表示频率配置失败。 */
-    uint32_t actual_frequency = ledc_set_freq(
+    /* ESP-IDF 5.5 中 ledc_set_freq 返回 esp_err_t，而不是实际频率值。 */
+    esp_err_t err = ledc_set_freq(
         BUZZER_LEDC_MODE,
         BUZZER_LEDC_TIMER,
         frequency_hz);
-    if (actual_frequency == 0) {
-        return ESP_ERR_INVALID_ARG;
+    if (err != ESP_OK) {
+        return err;
     }
 
     /* 设置50%左右的占空比，形成适合蜂鸣器的方波。 */
-    esp_err_t err = ledc_set_duty(
+    err = ledc_set_duty(
         BUZZER_LEDC_MODE,
         BUZZER_LEDC_CHANNEL,
         BUZZER_LEDC_DUTY);

@@ -1,25 +1,18 @@
 #include "config.h"
 #include "key_task.h"
 
-static const char *g_tag = "KEY_TASK";
-
 /* KEY_ID_0 的状态机和业务辅助函数都放在按键任务文件中。 */
 static void Key0_HandleEvent(const key_event_t *event)
 {
     switch (event->type) {
     case KEY_EVENT_PRESSED:
-        ESP_LOGI(g_tag, "KEY_ID_0 pressed on GPIO%d", event->pin);
-        if (Buzzer_Beep_Once(1000, 100) != ESP_OK) {
-            ESP_LOGW(g_tag, "Failed to start key beep");
-        }
+        (void)Buzzer_Beep_Once(1000, 100);
         break;
 
     case KEY_EVENT_RELEASED:
-        ESP_LOGI(g_tag, "KEY_ID_0 released on GPIO%d", event->pin);
         break;
 
     default:
-        ESP_LOGW(g_tag, "Unknown KEY_ID_0 event: %u", (unsigned)event->type);
         break;
     }
 }
@@ -41,7 +34,6 @@ static void Key_HandleEvent(const key_event_t *event)
         /* TODO: 添加 KEY_ID_3 的事件处理函数。 */
         break;
     default:
-        ESP_LOGW(g_tag, "Unknown key id: %u", (unsigned)event->id);
         break;
     }
 }
