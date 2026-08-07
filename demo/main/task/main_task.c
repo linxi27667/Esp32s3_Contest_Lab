@@ -1,34 +1,27 @@
 #include "config.h"
 #include "main_task.h"
 
-/* 比赛中的总模式和跨外设联动状态机放在本文件。 */
-typedef enum {
-    APP_STATE_IDLE = 0,
-    APP_STATE_RUNNING,
-    APP_STATE_ALARM,
-} app_state_t;
-
 void Main_Task(void *argument)
 {
     (void)argument;
-    app_state_t state = APP_STATE_IDLE;
+    main_state_t main_state = MAIN_STATE_IDLE;
 
     while (true) {
-        switch (state) {
-        case APP_STATE_IDLE:
-            /* TODO: 等待开始条件，满足后切换到 APP_STATE_RUNNING。 */
+        switch (main_state) {
+        case MAIN_STATE_IDLE:
+            /* TODO: 等待开始条件，满足后切换到 MAIN_STATE_RUNNING。 */
             break;
 
-        case APP_STATE_RUNNING:
+        case MAIN_STATE_RUNNING:
             /* TODO: 编写正常运行时的跨外设联动。 */
             break;
 
-        case APP_STATE_ALARM:
+        case MAIN_STATE_ALARM:
             /* TODO: 编写报警处理以及恢复条件。 */
             break;
 
         default:
-            state = APP_STATE_IDLE;
+            main_state = MAIN_STATE_IDLE;
             break;
         }
 

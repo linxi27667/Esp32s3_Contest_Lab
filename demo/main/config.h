@@ -30,7 +30,7 @@
 #include "driver/uart.h"
 #include "driver/gptimer.h"
 #include "driver/ledc.h"
-#include "driver/touch_sens.h"
+#include "driver/touch_sensor_legacy.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
@@ -152,8 +152,7 @@
 
 /* 电容触摸输入：ESP32-S3 的触摸通道 14 对应 GPIO14。 */
 #define TOUCH_CHANNEL_ID 14
-#define TOUCH_INITIAL_SCAN_TIMES 3
-#define TOUCH_SCAN_TIMEOUT_MS 2000
+#define TOUCH_INITIAL_STABILIZE_MS 50
 #define TOUCH_THRESHOLD_PERCENT 3
 
 /* 非易失存储：NVS 命名空间和键名的长度均不能超过 15 个字符。 */
@@ -176,3 +175,12 @@
 #include "hal_touch.h"
 #include "hal_nvs.h"
 #include "hal_rgb_led.h"
+
+/* 应用任务头文件：业务文件只需包含 config.h 即可访问全部任务接口。 */
+#include "task_manager.h"
+#include "main_task.h"
+#include "key_task.h"
+#include "timer_task.h"
+#include "touch_task.h"
+#include "uart_task.h"
+#include "adc_task.h"
