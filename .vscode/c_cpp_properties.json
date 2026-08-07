@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "ESP-IDF workspace",
+            "compileCommands": [
+                "${workspaceFolder}/demo/build/compile_commands.json",
+                "${workspaceFolder}/demo1/build/compile_commands.json"
+            ],
+            "includePath": [
+                "${workspaceFolder}/demo/main/**",
+                "${workspaceFolder}/demo/build/config",
+                "${workspaceFolder}/demo1/main/**",
+                "${workspaceFolder}/demo1/build/config"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/demo/main",
+                    "${workspaceFolder}/demo/build/config",
+                    "${workspaceFolder}/demo1/main",
+                    "${workspaceFolder}/demo1/build/config"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "cStandard": "c17",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

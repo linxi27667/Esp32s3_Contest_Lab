@@ -1,0 +1,26 @@
+{
+    "folders": [
+        {
+            "name": "demo-template",
+            "path": "demo"
+        },
+        {
+            "name": "demo1-reference",
+            "path": "demo1"
+        }
+    ],
+    "settings": {
+        "clangd.enable": false,
+        "editor.multiCursorModifier": "alt",
+        "editor.links": true,
+        "editor.hover.enabled": "on",
+        "editor.parameterHints.enabled": true,
+        "editor.suggestOnTriggerCharacters": true
+    },
+    "extensions": {
+        "recommendations": [
+            "espressif.esp-idf-extension",
+            "ms-vscode.cpptools"
+        ]
+    }
+}
