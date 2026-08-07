@@ -38,10 +38,18 @@ esp_err_t Uart_SendStr(uart_id_t id, const char *str);
 /**
  * @brief 使用 printf 格式向指定 UART 发送字符串。
  */
-esp_err_t Uart_Sendf(uart_id_t id, const char *fmt, ...);
+esp_err_t Uart_Sendf(uart_id_t id, const char *fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 
 /**
  * @brief 从指定 UART 读取数据。
+ *
+ * @note 此 HAL 只负责收发字节，不在此处编写比赛通信协议。
+ *       读取超时应使用一个有限时间窗口；如果传入 portMAX_DELAY 且
+ *       buffer 很大，底层可能会等待更多字节后才返回。
+ *       修改行结束符、缓存拼接规则：main/app/app_protocol.c。
+ *       修改 MODE 等命令的含义与回复：main/task/uart_task.c 的
+ *       Uart1_HandleCommand()。
  *
  * @return 大于 0 表示读取到的字节数，0 表示超时，-1 表示参数或驱动错误。
  */
