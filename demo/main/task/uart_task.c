@@ -1,9 +1,7 @@
 #include "config.h"
 #include "app_protocol.h"
+#include "main_task.h"
 #include "uart_task.h"
-
-/* 模板示例变量：正式做题时替换为 main_task.c 中对应的业务变量或函数。 */
-static uint8_t g_template_mode = 0;
 
 /*
  * 赛场改通信命令时，只修改这个函数。
@@ -34,8 +32,9 @@ static void Uart1_HandleCommand(const char *command)
      */
     if (sscanf(command, "MODE %u %c", &requested_mode, &trailing_character) == 1 &&
         requested_mode <= 3U) {
-        g_template_mode = (uint8_t)requested_mode;
-        /* 正式做题时：在此处调用业务函数或修改 main_task 的状态变量。 */
+        f_mode = (uint8_t)requested_mode;
+        /* NVS 模板：UART 修改成功后同样立即掉电保存。 */
+        (void)Nvs_SetI32("mode", f_mode);
         (void)Uart_Sendf(UART_ID_1, "OK MODE=%u\r\n", requested_mode);
         return;
     }
