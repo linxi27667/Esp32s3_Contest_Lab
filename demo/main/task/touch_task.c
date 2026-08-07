@@ -14,8 +14,15 @@ void Touch_Task(void *argument)
             previous_pressed = pressed;
             ESP_LOGI(g_tag, "Touch %s", pressed ? "pressed" : "released");
 
-            if (pressed && Buzzer_Beep_Once(2000, 100) != ESP_OK) {
-                ESP_LOGW(g_tag, "Failed to start touch beep");
+            if (pressed) {
+                uint8_t brightness = RgbLed_GetBrightness();
+                brightness = brightness == 128 ? 32 : 128;
+
+                (void)RgbLed_SetBrightness(brightness);
+                (void)RgbLed_Refresh();
+                /* NVS 保存模板：亮度修改成功后立即写入 Flash。 */
+                (void)Nvs_SetI32("bright", brightness);
+                (void)Buzzer_Beep_Once(2000, 100);
             }
         }
 

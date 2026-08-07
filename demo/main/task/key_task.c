@@ -6,10 +6,16 @@ static void Key0_HandleEvent(const key_event_t *event)
 {
     switch (event->type) {
     case KEY_EVENT_PRESSED:
-        (void)Buzzer_Beep_Once(1000, 100);
         break;
 
     case KEY_EVENT_RELEASED:
+        /* NVS 保存模板：先成功修改变量，再保存；无需手动 Commit。 */
+        ++f_mode;
+        if (f_mode > 3) {
+            f_mode = 0;
+        }
+        (void)Nvs_SetI32("mode", f_mode);
+        (void)Buzzer_Beep_Once(1000, 100);
         break;
 
     default:

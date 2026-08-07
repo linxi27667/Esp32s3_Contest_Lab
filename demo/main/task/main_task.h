@@ -7,5 +7,9 @@ typedef enum {
     MAIN_STATE_ALARM,    /**< 报警状态。 */
 } main_state_t;
 
+/* 需要被按键、UART、ADC 和 NVS 共同访问的业务变量。 */
+extern main_state_t main_state;
+extern uint8_t f_mode;
+
 /** @brief 系统总状态机任务入口。 */
 void Main_Task(void *argument);

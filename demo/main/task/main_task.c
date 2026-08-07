@@ -1,10 +1,12 @@
 #include "config.h"
 #include "main_task.h"
 
+main_state_t main_state = MAIN_STATE_IDLE;
+uint8_t f_mode = 0;
+
 void Main_Task(void *argument)
 {
     (void)argument;
-    main_state_t main_state = MAIN_STATE_IDLE;
 
     while (true) {
         switch (main_state) {
