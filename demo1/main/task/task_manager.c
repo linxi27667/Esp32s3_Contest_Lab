@@ -34,7 +34,6 @@ static esp_err_t Task_Create(
 
 esp_err_t AppTasks_Start(void)
 {
-    /* Main_Task 先创建，使其他任务可以立即向总状态机发送通知。 */
     esp_err_t err = Task_Create(
         Main_Task, "Main_Task", MAIN_TASK_STACK_SIZE,
         MAIN_TASK_PRIORITY, &g_main_task_handle);

@@ -15,8 +15,8 @@ typedef struct {
 /**
  * @brief 初始化一个电容触摸通道并启动连续扫描。
  *
- * 通道编号、初始扫描次数、超时时间和默认阈值百分比由 config.h 配置。
- * 初始化过程会进行多次单次扫描以建立稳定基准，再按基准值配置硬件阈值。
+ * 通道编号、初始稳定时间和默认阈值百分比由 config.h 配置。
+ * 初始化过程会启动定时自动扫描，等待基准稳定后再配置硬件阈值。
  *
  * @retval ESP_OK 初始化成功，触摸通道已开始连续扫描。
  * @retval ESP_ERR_INVALID_STATE 触摸驱动已经初始化。
@@ -54,14 +54,14 @@ esp_err_t Touch_IsPressed(bool *pressed_out);
 /**
  * @brief 运行时修改触摸阈值百分比，并重新配置硬件阈值。
  *
- * 本函数会临时停止连续扫描，使用当前基准值更新通道配置，然后恢复连续扫描。
+ * 本函数使用当前基准值更新硬件阈值，自动扫描不会停止。
  *
  * @param[in] percent 新阈值百分比，有效范围为 1~100。
  *
- * @retval ESP_OK 阈值更新并恢复扫描成功。
+ * @retval ESP_OK 阈值更新成功。
  * @retval ESP_ERR_INVALID_ARG percent 不在 1~100 范围内。
  * @retval ESP_ERR_INVALID_STATE 尚未调用 Touch_Init()。
- * @retval 其他值 采样、停止、重配置或恢复扫描失败。
+ * @retval 其他值 读取基准值或设置硬件阈值失败。
  */
 esp_err_t Touch_SetThresholdPercent(uint8_t percent);
 

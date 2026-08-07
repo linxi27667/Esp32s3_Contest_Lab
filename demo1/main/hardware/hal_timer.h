@@ -23,7 +23,7 @@ typedef enum {
     TIMER_EVENT_BOOT_COMPLETE,
     TIMER_EVENT_LED_BLINK,
     TIMER_EVENT_RGB_REFRESH,
-    TIMER_EVENT_COUNT
+    TIMER_EVENT_COUNT,
 } timer_event_type_t;
 
 typedef struct {

@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include "driver/gpio.h"
+
 /* LED编号与GPIO引脚的对应表。 */
 static const gpio_num_t g_led_pins[LED_ID_COUNT] = {
     LED1_PIN,

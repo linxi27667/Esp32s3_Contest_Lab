@@ -14,9 +14,15 @@ void Touch_Task(void *argument)
             previous_pressed = pressed;
             ESP_LOGI(g_tag, "Touch %s", pressed ? "pressed" : "released");
 
-            if (pressed && Buzzer_Beep_Once(2000, 100) != ESP_OK) {
-                ESP_LOGW(g_tag, "Failed to start touch beep");
-            }
+                if (pressed) {
+        /* 按下时切换亮度 */
+                     uint8_t brightness = RgbLed_GetBrightness();
+                     brightness = (brightness == 128)?32:128;
+                     RgbLed_SetBrightness(brightness);
+                     Nvs_SetI32("bright", RgbLed_GetBrightness());
+                     Buzzer_Beep_Once(2000, 100);
+                     Uart_Sendf(UART_ID_1, "BRIGHT=%d\r\n", RgbLed_GetBrightness());
+    }
         }
 
         vTaskDelay(pdMS_TO_TICKS(20));

@@ -3,14 +3,23 @@
 #include <stdbool.h>
 
 #include "config.h"
-#include "esp_log.h"
-
-static const char *g_tag = "PROTOCOL";
 
 static protocol_command_handler_t g_handler = NULL;
 static char g_line[UART_COMMAND_MAX_LENGTH + 1];
 static size_t g_line_length = 0;
 static bool g_discarding = false;
+static bool g_skip_next_lf = false;
+
+static void Protocol_Dispatch_Line(void)
+{
+    if (g_line_length == 0) {
+        return;
+    }
+
+    g_line[g_line_length] = '\0';
+    g_handler(g_line);
+    g_line_length = 0;
+}
 
 esp_err_t Protocol_Init(protocol_command_handler_t handler)
 {
@@ -20,8 +29,6 @@ esp_err_t Protocol_Init(protocol_command_handler_t handler)
 
     g_handler = handler;
     Protocol_Reset();
-    ESP_LOGI(g_tag, "UART text protocol ready, max command length=%u",
-             (unsigned)UART_COMMAND_MAX_LENGTH);
     return ESP_OK;
 }
 
@@ -40,30 +47,32 @@ esp_err_t Protocol_Feed(const uint8_t *data, size_t length)
         char byte = (char)data[i];
 
         if (g_discarding) {
-            if (byte == '\n') {
+            if (byte == '\r' || byte == '\n') {
                 g_discarding = false;
             }
             continue;
         }
 
         if (byte == '\r') {
+            Protocol_Dispatch_Line();
+            g_skip_next_lf = true;
             continue;
         }
 
         if (byte == '\n') {
-            if (g_line_length > 0) {
-                g_line[g_line_length] = '\0';
-                g_handler(g_line);
-                g_line_length = 0;
+            if (!g_skip_next_lf) {
+                Protocol_Dispatch_Line();
             }
+            g_skip_next_lf = false;
             continue;
         }
+
+        g_skip_next_lf = false;
 
         if (g_line_length >= UART_COMMAND_MAX_LENGTH) {
             g_line_length = 0;
             g_discarding = true;
             result = ESP_ERR_INVALID_SIZE;
-            ESP_LOGW(g_tag, "Command too long, discard until newline");
             continue;
         }
 
@@ -77,4 +86,5 @@ void Protocol_Reset(void)
 {
     g_line_length = 0;
     g_discarding = false;
+    g_skip_next_lf = false;
 }

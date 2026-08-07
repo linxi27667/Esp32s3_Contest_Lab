@@ -30,7 +30,7 @@
 #include "driver/uart.h"
 #include "driver/gptimer.h"
 #include "driver/ledc.h"
-#include "driver/touch_sens.h"
+#include "driver/touch_sensor_legacy.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
@@ -74,8 +74,13 @@
 
 #define KEY_QUEUE_LENGTH 8
 
+/* 主业务任务：负责总状态机和多个外设之间的联动逻辑。 */
+#define MAIN_TASK_STACK_SIZE 4096
+#define MAIN_TASK_PRIORITY 6
+#define MAIN_TASK_INTERVAL_MS 10
+
 /* 按键任务配置。 */
-#define KEY_TASK_STACK_SIZE 2048
+#define KEY_TASK_STACK_SIZE 3072
 #define KEY_TASK_PRIORITY 5
 
 /* 触摸任务配置：触摸硬件连续扫描，应用层按固定周期读取状态。 */
@@ -85,9 +90,6 @@
 /* 硬件定时器：GPTimer 分辨率 1MHz，事件队列长度。 */
 #define TIMER_QUEUE_LENGTH 8
 #define TIMER_DEFAULT_PERIOD_MS 1000
-
-/* 模拟题调试时等待 1 秒；正式题目要求 10 秒时改为 10000。 */
-#define BOOT_COMPLETE_DELAY_MS 1000
 
 /* 定时器任务配置。 */
 #define TIMER_TASK_STACK_SIZE 4096
@@ -123,6 +125,7 @@
 #define UART_TX_BUFFER_SIZE 1024
 #define UART_RX_BUFFER_SIZE 1024
 #define UART_PRINTF_BUFFER_SIZE 128
+#define UART_READ_TIMEOUT_MS 20 /* 收到一批字节后最多等待 20 ms，不要使用 portMAX_DELAY。 */
 #define UART_COMMAND_MAX_LENGTH 63
 #define DEBUG_CONSOLE_MAX_CMDLINE_LENGTH 128
 
@@ -146,12 +149,12 @@
 /* ADC任务配置。 */
 #define ADC_TASK_STACK_SIZE 3072
 #define ADC_TASK_PRIORITY 5
-#define ADC_SAMPLE_INTERVAL_MS 1000
+#define ADC_SAMPLE_INTERVAL_MS 200
+#define ADC_LOG_INTERVAL_MS 2000
 
 /* 电容触摸输入：ESP32-S3 的触摸通道 14 对应 GPIO14。 */
 #define TOUCH_CHANNEL_ID 14
-#define TOUCH_INITIAL_SCAN_TIMES 3
-#define TOUCH_SCAN_TIMEOUT_MS 2000
+#define TOUCH_INITIAL_STABILIZE_MS 50
 #define TOUCH_THRESHOLD_PERCENT 3
 
 /* 非易失存储：NVS 命名空间和键名的长度均不能超过 15 个字符。 */
@@ -159,13 +162,11 @@
 
 /* 可编程全彩灯：使用 RMT 驱动兼容 WS2812 的 RGB 灯带。 */
 #define RGB_LED_PIN GPIO_NUM_11
-#define RGB_LED_DEFAULT_COUNT 1
+#define RGB_LED_DEFAULT_COUNT 8
 #define RGB_LED_RMT_RESOLUTION_HZ 10000000
 #define RGB_LED_DEFAULT_BRIGHTNESS 64
 #define RGB_LED_RAINBOW_STEP_DEGREES 3
 
-#define MAIN_TASK_STACK_SIZE 4096
-#define MAIN_TASK_PRIORITY 6
 /* 硬件抽象层头文件。 */
 #include "hal_led.h"
 #include "hal_buzzer.h"
@@ -176,3 +177,12 @@
 #include "hal_touch.h"
 #include "hal_nvs.h"
 #include "hal_rgb_led.h"
+
+/* 应用任务头文件：业务文件只需包含 config.h 即可访问全部任务接口。 */
+#include "task_manager.h"
+#include "main_task.h"
+#include "key_task.h"
+#include "timer_task.h"
+#include "touch_task.h"
+#include "uart_task.h"
+#include "adc_task.h"

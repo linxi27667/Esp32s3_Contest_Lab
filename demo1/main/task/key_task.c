@@ -1,35 +1,27 @@
 #include "config.h"
 #include "key_task.h"
-#include "main_task.h"
 
-static const char *g_tag = "KEY_TASK";
-
+/* KEY_ID_0 的状态机和业务辅助函数都放在按键任务文件中。 */
 static void Key0_HandleEvent(const key_event_t *event)
 {
     switch (event->type) {
     case KEY_EVENT_PRESSED:
-        ESP_LOGI(g_tag, "KEY_ID_0 pressed on GPIO%d", event->pin);
         break;
 
-    case KEY_EVENT_RELEASED: {
-        /* 一次完整点击以释放边沿为准，避免按下和释放各计数一次。 */
-        const uint8_t mode = MainTask_NextMode();
-        if (Uart_Sendf(UART_ID_1, "MODE=%u\r\n", (unsigned)mode) != ESP_OK) {
-            ESP_LOGW(g_tag, "Failed to send mode");
-        }
-        if (Buzzer_Beep_Once(1000, 100) != ESP_OK) {
-            ESP_LOGW(g_tag, "Failed to start key beep");
-        }
-        ESP_LOGI(g_tag, "KEY_ID_0 released on GPIO%d", event->pin);
+    case KEY_EVENT_RELEASED:
+        f_mode++;
+        if(f_mode > 3) f_mode = 0;
+        Nvs_SetI32("mode", f_mode);
+        Buzzer_Beep_Once(1000, 100);
+        Uart_Sendf(UART_ID_1, "MODE=%u\r\n", (unsigned)f_mode);
         break;
-    }
 
     default:
-        ESP_LOGW(g_tag, "Unknown KEY_ID_0 event: %u", (unsigned)event->type);
         break;
     }
 }
 
+/* 第一层按 KEY_ID 分发，第二层由各按键处理自己的事件类型。 */
 static void Key_HandleEvent(const key_event_t *event)
 {
     switch (event->id) {
@@ -46,7 +38,6 @@ static void Key_HandleEvent(const key_event_t *event)
         /* TODO: 添加 KEY_ID_3 的事件处理函数。 */
         break;
     default:
-        ESP_LOGW(g_tag, "Unknown key id: %u", (unsigned)event->id);
         break;
     }
 }
@@ -61,6 +52,7 @@ void Key_Task(void *argument)
             continue;
         }
 
+        /* 中断只负责上报边沿，任务延时 20 ms 后确认稳定电平。 */
         vTaskDelay(pdMS_TO_TICKS(20));
 
         bool pressed = false;

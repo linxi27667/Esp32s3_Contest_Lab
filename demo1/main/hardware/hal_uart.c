@@ -44,9 +44,18 @@ static uart_slot_t g_uarts[UART_ID_COUNT] = {
 
 static bool g_driver_ready = false;
 
+static bool Uart_Id_Is_Valid(uart_id_t id)
+{
+    return id >= UART_ID_0 && id < UART_ID_COUNT;
+}
+
 /* 初始化单路业务串口；失败时删除已安装驱动。 */
 static esp_err_t Uart_Init_One(uart_id_t id)
 {
+    if (!Uart_Id_Is_Valid(id)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
     uart_slot_t *slot = &g_uarts[id];
 
     const uart_config_t uart_config = {
@@ -109,16 +118,23 @@ esp_err_t Uart_Hal_Init(void)
         return ESP_ERR_INVALID_STATE;
     }
 
+    bool any_enabled = false;
     for (int i = 0; i < UART_ID_COUNT; ++i) {
         if (!g_uarts[i].enabled) {
             continue;
         }
+
+        any_enabled = true;
 
         esp_err_t err = Uart_Init_One((uart_id_t)i);
         if (err != ESP_OK) {
             Uart_Deinit_All();
             return err;
         }
+    }
+
+    if (!any_enabled) {
+        return ESP_ERR_INVALID_ARG;
     }
 
     g_driver_ready = true;
@@ -128,7 +144,7 @@ esp_err_t Uart_Hal_Init(void)
 /* 发送指定长度的二进制数据。 */
 esp_err_t Uart_Send(uart_id_t id, const uint8_t *data, size_t length)
 {
-    if (!g_driver_ready || id < 0 || id >= UART_ID_COUNT || !g_uarts[id].ready) {
+    if (!g_driver_ready || !Uart_Id_Is_Valid(id) || !g_uarts[id].ready) {
         return ESP_ERR_INVALID_STATE;
     }
     if (data == NULL || length == 0) {
@@ -154,7 +170,7 @@ esp_err_t Uart_SendStr(uart_id_t id, const char *str)
 /* printf 风格发送，方便上位机调试打印。 */
 esp_err_t Uart_Sendf(uart_id_t id, const char *fmt, ...)
 {
-    if (!g_driver_ready || id < 0 || id >= UART_ID_COUNT || !g_uarts[id].ready) {
+    if (!g_driver_ready || !Uart_Id_Is_Valid(id) || !g_uarts[id].ready) {
         return ESP_ERR_INVALID_STATE;
     }
     if (fmt == NULL) {
@@ -172,7 +188,7 @@ esp_err_t Uart_Sendf(uart_id_t id, const char *fmt, ...)
         return ESP_FAIL;
     }
     if ((size_t)length >= sizeof(buffer)) {
-        length = (int)sizeof(buffer) - 1;
+        return ESP_ERR_INVALID_SIZE;
     }
 
     return Uart_Send(id, (const uint8_t *)buffer, (size_t)length);
@@ -181,12 +197,39 @@ esp_err_t Uart_Sendf(uart_id_t id, const char *fmt, ...)
 /* 读取最多 length 字节；返回实际读到的字节数，超时返回 0，错误返回 -1。 */
 int Uart_Read(uart_id_t id, uint8_t *buffer, size_t length, TickType_t timeout_ticks)
 {
-    if (!g_driver_ready || id < 0 || id >= UART_ID_COUNT || !g_uarts[id].ready) {
+    if (!g_driver_ready || !Uart_Id_Is_Valid(id) || !g_uarts[id].ready) {
         return -1;
     }
     if (buffer == NULL || length == 0) {
         return -1;
     }
 
-    return uart_read_bytes(g_uarts[id].port, buffer, length, timeout_ticks);
+    /*
+     * 先等待至少一个字节，再只读取当前已经到达的数据。
+     * 这样即使调用者传入 portMAX_DELAY，也不会为了填满整个 buffer 阻塞。
+     */
+    int received = uart_read_bytes(
+        g_uarts[id].port, buffer, 1, timeout_ticks);
+    if (received <= 0 || length == 1) {
+        return received;
+    }
+
+    size_t buffered = 0;
+    if (uart_get_buffered_data_len(g_uarts[id].port, &buffered) != ESP_OK) {
+        return received;
+    }
+
+    if (buffered > length - 1) {
+        buffered = length - 1;
+    }
+
+    if (buffered > 0) {
+        int drained = uart_read_bytes(
+            g_uarts[id].port, buffer + received, buffered, 0);
+        if (drained > 0) {
+            received += drained;
+        }
+    }
+
+    return received;
 }

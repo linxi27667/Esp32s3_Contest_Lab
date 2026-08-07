@@ -16,3 +16,6 @@ Thumbs.db
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Local document-rendering cache
+tmp/

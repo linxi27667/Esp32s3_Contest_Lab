@@ -28,7 +28,7 @@ idf_component_register(SRCS
                            esp_driver_ledc
                            esp_driver_gptimer
                            esp_driver_uart
-                           esp_driver_touch_sens
+                           driver
                            esp_adc
                            esp_timer
                            nvs_flash
