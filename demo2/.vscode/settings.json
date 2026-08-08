@@ -1,0 +1,36 @@
+{
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "idf.flashType": "UART",
+    "idf.buildPath": "${workspaceFolder}/build",
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32s3"
+    },
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.autocomplete": "default",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.default.configurationProvider": "espressif.esp-idf-extension",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/main/**",
+        "${workspaceFolder}/build/config"
+    ],
+    "C_Cpp.intelliSenseCachePath": "${workspaceFolder}/build/.vscode-cache",
+    "clangd.enable": false,
+    "editor.multiCursorModifier": "alt",
+    "editor.links": true,
+    "editor.hover.enabled": "on",
+    "editor.parameterHints.enabled": true,
+    "editor.suggestOnTriggerCharacters": true,
+    "editor.quickSuggestions": {
+        "other": "on",
+        "comments": "off",
+        "strings": "off"
+    },
+    "files.associations": {
+        "*.h": "c"
+    }
+}
